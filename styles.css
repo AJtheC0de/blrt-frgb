@@ -231,6 +231,11 @@ textarea.control.short-answer { min-height: 65px; }
 .consent-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
 .consent-fields .question { padding: 8px 0 0; border: 0; }
 .consent-fields .question-label { font-size: 11px; }
+.delivery-box { margin-top: 21px; padding-top: 17px; border-top: 1px solid #d9e0d5; }
+.delivery-box p { margin: 0 0 11px; color: #536151; font-size: 12px; }
+.delivery-box .consent-choice { margin-bottom: 13px; }
+.delivery-status { min-height: 20px; margin: 10px 0 0 !important; color: #536151; font-size: 11px !important; }
+.delivery-status.is-error { color: #8b4035; }
 .add-artwork {
   margin-top: 16px;
   padding: 8px 12px;

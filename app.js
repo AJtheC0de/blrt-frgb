@@ -1,4 +1,5 @@
 const STORAGE_KEY = "blerta-questionnaire-v1";
+const SUBMISSION_ENDPOINT = "https://formsubmit.co/ajax/ajnunidriton@gmail.com";
 
 const artworkFields = [
   { key: "title", label: "Titel (oder „ohne Titel“)", type: "text" },
@@ -94,9 +95,7 @@ const sections = [
       { key: "contactEmail", label: "An welche E-Mail-Adresse sollen Nachrichten aus dem Kontaktformular gehen? (Sie wird nicht öffentlich angezeigt.)", type: "email" },
       { key: "publicEmail", label: "Soll die E-Mail-Adresse auch sichtbar auf der Website stehen?", type: "radio", options: ["Ja", "Nein"] },
       { key: "socialChannels", label: "Ist Instagram (@blerta_a) weiterhin der beste Weg, dich zu erreichen? Gibt es weitere Kanäle?", type: "textarea" },
-      { key: "commissionDetails", label: "Wenn du Auftragsarbeiten machst: Was sollten Interessierte vorher wissen? (Größen, Wartezeit, Preisrahmen)", type: "textarea" },
       { key: "shipping", label: "Versendest du Bilder? Wenn ja, wohin (nur Deutschland, EU, weltweit)?", type: "textarea" },
-      { key: "donations", label: "Möchtest du eine Möglichkeit zur Unterstützung oder Spende auf der Website? (Wir bauen das nur ein, wenn du es ausdrücklich willst.)", type: "radio", options: ["Ja", "Nein", "Vielleicht später"] },
     ],
   },
   {
@@ -179,6 +178,9 @@ try {
   showStorageWarning("Der Browser kann gespeicherte Antworten nicht lesen. Du kannst den Fragebogen trotzdem ausfüllen und deine Antworten herunterladen.");
   console.error("Fragebogen-Antworten konnten nicht geladen werden.", error);
 }
+
+delete state.answers.commissionDetails;
+delete state.answers.donations;
 
 function saveState() {
   saveIndicator.classList.add("is-saving");
@@ -282,7 +284,8 @@ function renderCopyReview() {
 
 function renderConsent() {
   const consent = getValue("consent-agreement");
-  return `<section class="consent-box"><h3>Einverständnis</h3><label class="consent-choice" for="consent-agreement"><input id="consent-agreement" type="checkbox" data-answer="consent-agreement"${consent ? " checked" : ""}><span>Ich bin damit einverstanden, dass meine Angaben für meine Website verwendet werden.</span></label><p class="consent-reminder">Ich möchte jeden Text sehen und freigeben, bevor er online geht.</p><div class="consent-fields">${renderControl({ key: "consentName", label: "Name", type: "text" }, "consent-name")}${renderControl({ key: "consentDate", label: "Datum", type: "text" }, "consent-date")}</div></section>`;
+  const deliveryConsent = getValue("consent-email-delivery");
+  return `<section class="consent-box"><h3>Einverständnis</h3><label class="consent-choice" for="consent-agreement"><input id="consent-agreement" type="checkbox" data-answer="consent-agreement"${consent ? " checked" : ""}><span>Ich bin damit einverstanden, dass meine Angaben für meine Website verwendet werden.</span></label><p class="consent-reminder">Ich möchte jeden Text sehen und freigeben, bevor er online geht.</p><div class="consent-fields">${renderControl({ key: "consentName", label: "Name", type: "text" }, "consent-name")}${renderControl({ key: "consentDate", label: "Datum", type: "text" }, "consent-date")}</div><div class="delivery-box"><p>Wenn du absendest, werden deine Antworten einschließlich eventuell eingetragener Gesundheitsangaben über FormSubmit an <strong>ajnunidriton@gmail.com</strong> gesendet. FormSubmit ist ein externer Dienst und verarbeitet die Übermittlung.</p><label class="consent-choice" for="consent-email-delivery"><input id="consent-email-delivery" type="checkbox" data-answer="consent-email-delivery"${deliveryConsent ? " checked" : ""}><span>Ich möchte meine Antworten per E-Mail an diese Adresse senden.</span></label><button class="button button-primary" type="button" id="submit-answers">Antworten per E-Mail senden <span aria-hidden="true">→</span></button><p class="delivery-status" id="delivery-status" role="status" aria-live="polite"></p></div></section>`;
 }
 
 function renderSection() {
@@ -310,7 +313,7 @@ function sectionHasAnswers(sectionIndex) {
     ["faithVisibility", "calligraphyMeaning", "faithWords", "verseCheck", "verseArabic", "verseLanguage", "religiousBoundaries"],
     ["health-permission-", "artInDailyLife", "healthImpact", "healthWording", "inHerWords"],
     ["photo-check-", "existingPhotos", "excludedPhotos", "photographer"],
-    ["offerings", "contactEmail", "publicEmail", "socialChannels", "commissionDetails", "shipping", "donations"],
+    ["offerings", "contactEmail", "publicEmail", "socialChannels", "shipping"],
     ["copy-"],
     ["siteLanguage", "siteFeedback", "mood", "missing", "remove", "domain", "reference", "anythingElse", "consent"],
   ][sectionIndex];
@@ -324,7 +327,7 @@ function updateProgress() {
     if (section.type === "health") return count + section.questions.length + 5;
     if (section.type === "photos") return count + section.questions.length + 8;
     if (section.type === "copyReview") return count + copyRows.length * 2;
-    return count + section.questions.length + (section.consent ? 3 : 0);
+    return count + section.questions.length + (section.consent ? 4 : 0);
   }, 0);
   const percent = total ? Math.round((answered / total) * 100) : 0;
   progressValue.textContent = `${percent}%`;
@@ -355,6 +358,97 @@ function updateAnswer(target) {
   updateProgress();
 }
 
+function getSubmissionMessage() {
+  const labels = new Map();
+  for (const section of sections) {
+    for (const question of section.questions || []) {
+      labels.set(question.key, `${section.title} — ${question.label}`);
+    }
+  }
+
+  const artworkTitles = [...existingArtworks, "Weiteres Bild", ...Array.from({ length: state.extraArtworks }, (_, i) => `Weiteres Bild ${i + 2}`)];
+  artworkTitles.forEach((title, index) => {
+    for (const field of artworkFields) {
+      labels.set(`artwork-${index}-${field.key}`, `${title} — ${field.label}`);
+    }
+  });
+
+  const healthPermissions = [
+    "Gar nichts zu meiner Gesundheit",
+    "Nur allgemein, dass ich mit gesundheitlichen Herausforderungen lebe",
+    "Der Name meiner Erkrankung (kraniozervikale Instabilität)",
+    "Wie meine Gesundheit meine Art zu malen beeinflusst",
+    "Fotos, auf denen man z. B. eine Halskrause oder Stütze sieht",
+  ];
+  healthPermissions.forEach((label, index) => labels.set(`health-permission-${index}`, `Gesundheit — ${label}`));
+
+  const photoItems = [
+    "Jedes Bild einzeln, frontal fotografiert, ohne Rahmen im Bild",
+    "Jedes Bild mit Rahmen bzw. an der Wand",
+    "Nahaufnahmen der Oberfläche (Pinselstriche, Struktur)",
+    "Ein Porträtfoto von dir",
+    "Du beim Malen",
+    "Dein Arbeitsplatz / Atelier",
+    "Du mit einem fertigen Bild",
+    "Fotos von Ausstellungen oder Präsentationen",
+  ];
+  photoItems.forEach((label, index) => labels.set(`photo-check-${index}`, `Fotos — ${label}`));
+  copyRows.forEach(([location], index) => {
+    labels.set(`copy-${index}-approval`, `Website-Texte — ${location} — Freigabe`);
+    labels.set(`copy-${index}-change`, `Website-Texte — ${location} — Änderung`);
+  });
+  labels.set("consent-agreement", "Einverständnis zur Verwendung für die Website");
+  labels.set("consent-name", "Name");
+  labels.set("consent-date", "Datum");
+
+  const lines = Object.entries(state.answers)
+    .filter(([key, value]) => key !== "consent-email-delivery" && labels.has(key) && (Array.isArray(value) ? value.length > 0 : value !== "" && value !== false && value != null))
+    .map(([key, value]) => {
+      const answer = Array.isArray(value) ? value.join(", ") : value === true ? "Ja" : String(value);
+      return `${labels.get(key)}:\n${answer}`;
+    });
+
+  return `Fragebogen für Blerta — deine Website\n${new Date().toLocaleString("de-DE")}\n\n${lines.join("\n\n")}`;
+}
+
+async function submitAnswers(button) {
+  const status = document.querySelector("#delivery-status");
+  if (!state.answers["consent-email-delivery"]) {
+    status.textContent = "Bitte bestätige zuerst, dass du deine Antworten per E-Mail senden möchtest.";
+    status.classList.add("is-error");
+    document.querySelector("#consent-email-delivery").focus();
+    return;
+  }
+
+  status.classList.remove("is-error");
+  status.textContent = "Deine Antworten werden gesendet …";
+  button.disabled = true;
+  try {
+    const response = await fetch(SUBMISSION_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        name: state.answers["consent-name"] || "Blerta",
+        _subject: "Fragebogen für Blerta — neue Antworten",
+        _template: "table",
+        message: getSubmissionMessage(),
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || (result.success !== true && result.success !== "true")) {
+      throw new Error(result.message || `E-Mail-Versand fehlgeschlagen (HTTP ${response.status}).`);
+    }
+    status.textContent = "Danke! Deine Antworten wurden zum Versand übermittelt. Es wird keine Bestätigungskopie an dich gesendet.";
+    saveStatus.textContent = "Gesendet · lokale Kopie bleibt gespeichert";
+  } catch (error) {
+    status.textContent = "Der Versand hat nicht geklappt. Deine Antworten sind weiterhin in diesem Browser gespeichert. Bitte versuche es später erneut oder lade sie herunter.";
+    status.classList.add("is-error");
+    console.error("Fragebogen konnte nicht per E-Mail übermittelt werden.", error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 nav.addEventListener("click", (event) => {
   const button = event.target.closest("[data-section]");
   if (!button) return;
@@ -369,6 +463,11 @@ content.addEventListener("change", (event) => {
   if (event.target.matches('input[type="radio"], input[type="checkbox"]')) updateAnswer(event.target);
 });
 content.addEventListener("click", (event) => {
+  const submitButton = event.target.closest("#submit-answers");
+  if (submitButton) {
+    submitAnswers(submitButton);
+    return;
+  }
   if (!event.target.closest("#add-artwork")) return;
   if (state.extraArtworks >= 12) {
     showToast("Du kannst bis zu 12 weitere Bilder ergänzen.");

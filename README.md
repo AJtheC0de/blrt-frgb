@@ -1,6 +1,6 @@
 # Fragebogen für Blerta
 
-Ein interaktiver, statischer Fragebogen ohne Backend. Antworten werden automatisch im lokalen Speicher des Browsers gesichert und nicht an einen Server übertragen. Über **Antworten herunterladen** kann Blerta ihre Antworten als JSON-Datei exportieren und selbst weitergeben.
+Ein interaktiver, statischer Fragebogen. Antworten werden automatisch im lokalen Speicher des Browsers gesichert. Blerta kann sie als JSON-Datei herunterladen oder am Ende ausdrücklich per E-Mail über FormSubmit an `ajnunidriton@gmail.com` senden.
 
 ## Lokal ansehen
 
@@ -15,6 +15,8 @@ Ein interaktiver, statischer Fragebogen ohne Backend. Antworten werden automatis
 
 Vercel stellt anschließend eine URL bereit und kann weitere Deployments automatisch aus GitHub erstellen.
 
-## Datenschutz
+## E-Mail-Versand
 
-Der Fragebogen verwendet kein Analyse- oder Formular-Backend. Antworten bleiben im Browserprofil, in dem sie eingegeben wurden. Beim Löschen der Browserdaten können sie verloren gehen. Deshalb sollten Antworten regelmäßig heruntergeladen werden. Die Exportdatei kann sensible persönliche Angaben enthalten und sollte nur bewusst weitergegeben werden.
+Der Versand verwendet [FormSubmit](https://formsubmit.co/), damit kein eigener Server oder API-Schlüssel erforderlich ist. FormSubmit verarbeitet die Antworten zur Übermittlung; dazu können freiwillige Angaben zur Gesundheit gehören. Die Antworten bleiben bis zum ausdrücklichen Absenden im Browser. Beim Löschen der Browserdaten können nicht exportierte Antworten verloren gehen.
+
+Beim ersten Versand schickt FormSubmit eine Aktivierungsnachricht an `ajnunidriton@gmail.com`. Der Empfänger muss die Adresse über diesen Link bestätigen. Danach gehen weitere Einsendungen an diese Adresse. Da der aktuelle Endpunkt im öffentlichen JavaScript steht, sollte nach der Aktivierung ein zufälliger, nicht die E-Mail-Adresse enthaltender FormSubmit-Endpunkt eingerichtet und die Konstante `SUBMISSION_ENDPOINT` in `app.js` entsprechend ersetzt werden.
