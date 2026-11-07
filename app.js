@@ -1,5 +1,8 @@
 const STORAGE_KEY = "blerta-questionnaire-v1";
-const SUBMISSION_ENDPOINT = "https://formsubmit.co/ajax/ajnunidriton@gmail.com";
+const SUBMISSION_ENDPOINT = "https://formsubmit.co/ajnunidriton@gmail.com";
+const ARTWORK_DB_NAME = "blerta-questionnaire-files";
+const MAX_EMAIL_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+let artworkDbPromise;
 
 const artworkFields = [
   { key: "title", label: "Titel (oder „ohne Titel“)", type: "text" },
@@ -8,8 +11,6 @@ const artworkFields = [
   { key: "size", label: "Größe in cm (Breite × Höhe)", type: "text" },
   { key: "framed", label: "Gerahmt?", type: "radio", options: ["Ja", "Nein"] },
   { key: "status", label: "Status", type: "radio", options: ["Verfügbar", "Verkauft", "Privatbesitz", "Nicht verkäuflich"] },
-  { key: "showPrice", label: "Preis anzeigen?", type: "radio", options: ["Ja", "Nein", "Auf Anfrage"] },
-  { key: "price", label: "Preis, falls ja", type: "text" },
   { key: "story", label: "Was bedeutet dir dieses Bild? Wie ist es entstanden? (2–3 Sätze)", type: "textarea", full: true },
   { key: "featured", label: "Darf es in der großen Ausstellung auf der Startseite erscheinen?", type: "radio", options: ["Ja", "Nein"], full: true },
 ];
@@ -167,7 +168,7 @@ try {
     if (parsed && typeof parsed === "object" && parsed.answers && typeof parsed.answers === "object") {
       state = {
         answers: parsed.answers,
-        extraArtworks: Number.isInteger(parsed.extraArtworks) && parsed.extraArtworks >= 0 ? Math.min(parsed.extraArtworks, 12) : 0,
+        extraArtworks: Number.isInteger(parsed.extraArtworks) && parsed.extraArtworks >= 0 ? parsed.extraArtworks : 0,
         currentSection: Number.isInteger(parsed.currentSection) ? Math.min(Math.max(parsed.currentSection, 0), sections.length - 1) : 0,
       };
     } else {
@@ -181,6 +182,9 @@ try {
 
 delete state.answers.commissionDetails;
 delete state.answers.donations;
+for (const key of Object.keys(state.answers)) {
+  if (/^artwork-\d+-(showPrice|price)$/.test(key)) delete state.answers[key];
+}
 
 function saveState() {
   saveIndicator.classList.add("is-saving");
@@ -204,6 +208,44 @@ function escapeHtml(value) {
 
 function getValue(key) {
   return state.answers[key];
+}
+
+function openArtworkDatabase() {
+  if (!("indexedDB" in window)) {
+    return Promise.reject(new Error("Dieser Browser unterstützt keine lokale Dateispeicherung."));
+  }
+  if (!artworkDbPromise) {
+    artworkDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(ARTWORK_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore("uploads", { keyPath: "key" });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Die lokale Dateispeicherung konnte nicht geöffnet werden."));
+    });
+  }
+  return artworkDbPromise;
+}
+
+async function saveArtworkFiles(artworkKey, files) {
+  const database = await openArtworkDatabase();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction("uploads", "readwrite");
+    const request = transaction.objectStore("uploads").put({ key: artworkKey, files: [...files] });
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || request.error || new Error("Die Bilddateien konnten nicht gespeichert werden."));
+    transaction.onabort = () => reject(transaction.error || new Error("Das Speichern der Bilddateien wurde abgebrochen."));
+  });
+}
+
+async function getArtworkFiles() {
+  const database = await openArtworkDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("uploads", "readonly");
+    const request = transaction.objectStore("uploads").getAll();
+    request.onsuccess = () => resolve(request.result.flatMap((record) => record.files));
+    request.onerror = () => reject(request.error || new Error("Die gespeicherten Bilddateien konnten nicht gelesen werden."));
+  });
 }
 
 function renderControl(question, key, options = {}) {
@@ -239,9 +281,11 @@ function renderArtworks() {
     const titleQuestion = { key: "title", label: "Titel", type: "text" };
     const fields = artworkFields.filter((field) => field.key !== "title").map((field) => renderControl(field, `${key}-${field.key}`, { full: field.full })).join("");
     const headline = index < 3 ? title : (index === 3 ? "Weiteres Bild" : `Weiteres Bild ${index - 2}`);
-    return `<section class="artwork-block" aria-labelledby="${key}-heading"><div class="artwork-heading"><span class="artwork-number">BILD ${String(index + 1).padStart(2, "0")}</span><h3 id="${key}-heading">${escapeHtml(headline)}</h3></div>${index < 3 ? `<p class="question-help">${escapeHtml(title)}</p>` : ""}<div class="artwork-fields">${renderControl(titleQuestion, `${key}-title`)}${fields}</div></section>`;
+    const uploadedNames = getValue(`${key}-uploads`) || [];
+    const uploadId = `${key}-uploads-input`;
+    return `<section class="artwork-block" aria-labelledby="${key}-heading"><div class="artwork-heading"><span class="artwork-number">BILD ${String(index + 1).padStart(2, "0")}</span><h3 id="${key}-heading">${escapeHtml(headline)}</h3></div>${index < 3 ? `<p class="question-help">${escapeHtml(title)}</p>` : ""}<div class="artwork-fields">${renderControl(titleQuestion, `${key}-title`)}${fields}</div><div class="artwork-upload"><label class="question-label" for="${uploadId}">Fotos zu diesem Bild hochladen</label><input class="control file-control" id="${uploadId}" type="file" accept="image/*" multiple data-artwork-files="${key}"><p class="upload-names" id="${key}-upload-names">${uploadedNames.length ? escapeHtml(uploadedNames.join(", ")) : "Noch keine Bilder ausgewählt."}</p><button class="text-button muted-button clear-uploads" type="button" data-clear-artwork="${key}">Fotos für dieses Bild entfernen</button></div></section>`;
   }).join("");
-  return `${cards}<button class="add-artwork" type="button" id="add-artwork">＋ Weiteres Bild hinzufügen</button>`;
+  return `${cards}<button class="add-artwork" type="button" id="add-artwork">＋ Weiteres Bild hinzufügen</button><p class="upload-note">Die ausgewählten Fotos bleiben auf diesem Gerät gespeichert und werden beim Absenden angehängt. Pro E-Mail können insgesamt bis zu 10 MB an Bildern mitgesendet werden. Größere Bildmengen bitte in mehreren Teilen senden.</p>`;
 }
 
 function renderPhotoChecklist() {
@@ -285,7 +329,7 @@ function renderCopyReview() {
 function renderConsent() {
   const consent = getValue("consent-agreement");
   const deliveryConsent = getValue("consent-email-delivery");
-  return `<section class="consent-box"><h3>Einverständnis</h3><label class="consent-choice" for="consent-agreement"><input id="consent-agreement" type="checkbox" data-answer="consent-agreement"${consent ? " checked" : ""}><span>Ich bin damit einverstanden, dass meine Angaben für meine Website verwendet werden.</span></label><p class="consent-reminder">Ich möchte jeden Text sehen und freigeben, bevor er online geht.</p><div class="consent-fields">${renderControl({ key: "consentName", label: "Name", type: "text" }, "consent-name")}${renderControl({ key: "consentDate", label: "Datum", type: "text" }, "consent-date")}</div><div class="delivery-box"><p>Wenn du absendest, werden deine Antworten einschließlich eventuell eingetragener Gesundheitsangaben über FormSubmit an <strong>ajnunidriton@gmail.com</strong> gesendet. FormSubmit ist ein externer Dienst und verarbeitet die Übermittlung.</p><label class="consent-choice" for="consent-email-delivery"><input id="consent-email-delivery" type="checkbox" data-answer="consent-email-delivery"${deliveryConsent ? " checked" : ""}><span>Ich möchte meine Antworten per E-Mail an diese Adresse senden.</span></label><button class="button button-primary" type="button" id="submit-answers">Antworten per E-Mail senden <span aria-hidden="true">→</span></button><p class="delivery-status" id="delivery-status" role="status" aria-live="polite"></p></div></section>`;
+  return `<section class="consent-box"><h3>Einverständnis</h3><label class="consent-choice" for="consent-agreement"><input id="consent-agreement" type="checkbox" data-answer="consent-agreement"${consent ? " checked" : ""}><span>Ich bin damit einverstanden, dass meine Angaben für meine Website verwendet werden.</span></label><p class="consent-reminder">Ich möchte jeden Text sehen und freigeben, bevor er online geht.</p><div class="consent-fields">${renderControl({ key: "consentName", label: "Name", type: "text" }, "consent-name")}${renderControl({ key: "consentDate", label: "Datum", type: "text" }, "consent-date")}</div><div class="delivery-box"><p>Beim Absenden werden deine Antworten über FormSubmit an <strong>ajnunidriton@gmail.com</strong> gesendet. FormSubmit ist ein externer Dienst und verarbeitet die Übermittlung.</p><label class="consent-choice" for="consent-email-delivery"><input id="consent-email-delivery" type="checkbox" data-answer="consent-email-delivery"${deliveryConsent ? " checked" : ""}><span>Ich möchte meine Antworten per E-Mail an diese Adresse senden.</span></label><button class="button button-primary" type="button" id="submit-answers">Antworten per E-Mail senden <span aria-hidden="true">→</span></button><p class="delivery-status" id="delivery-status" role="status" aria-live="polite"></p></div></section>`;
 }
 
 function renderSection() {
@@ -323,7 +367,7 @@ function sectionHasAnswers(sectionIndex) {
 function updateProgress() {
   const answered = Object.values(state.answers).filter((value) => Array.isArray(value) ? value.length > 0 : Boolean(value)).length;
   const total = sections.reduce((count, section) => {
-    if (section.type === "artworks") return count + (existingArtworks.length + 1 + state.extraArtworks) * artworkFields.length;
+    if (section.type === "artworks") return count + (existingArtworks.length + 1 + state.extraArtworks) * (artworkFields.length + 1);
     if (section.type === "health") return count + section.questions.length + 5;
     if (section.type === "photos") return count + section.questions.length + 8;
     if (section.type === "copyReview") return count + copyRows.length * 2;
@@ -371,6 +415,7 @@ function getSubmissionMessage() {
     for (const field of artworkFields) {
       labels.set(`artwork-${index}-${field.key}`, `${title} — ${field.label}`);
     }
+    labels.set(`artwork-${index}-uploads`, `${title} — hochgeladene Fotos`);
   });
 
   const healthPermissions = [
@@ -421,29 +466,56 @@ async function submitAnswers(button) {
   }
 
   status.classList.remove("is-error");
-  status.textContent = "Deine Antworten werden gesendet …";
+  status.textContent = "Deine Antworten werden vorbereitet …";
   button.disabled = true;
   try {
-    const response = await fetch(SUBMISSION_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        name: state.answers["consent-name"] || "Blerta",
-        _subject: "Fragebogen für Blerta — neue Antworten",
-        _template: "table",
-        message: getSubmissionMessage(),
-      }),
-    });
-    const result = await response.json();
-    if (!response.ok || (result.success !== true && result.success !== "true")) {
-      throw new Error(result.message || `E-Mail-Versand fehlgeschlagen (HTTP ${response.status}).`);
+    const files = await getArtworkFiles();
+    const totalBytes = files.reduce((total, file) => total + file.size, 0);
+    if (totalBytes > MAX_EMAIL_ATTACHMENT_BYTES) {
+      throw new Error("Die Bilder sind zusammen größer als 10 MB. Bitte wähle weniger oder kleinere Bilder aus und sende den Rest in einer weiteren E-Mail.");
     }
-    status.textContent = "Danke! Deine Antworten wurden zum Versand übermittelt. Es wird keine Bestätigungskopie an dich gesendet.";
-    saveStatus.textContent = "Gesendet · lokale Kopie bleibt gespeichert";
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = SUBMISSION_ENDPOINT;
+    form.enctype = "multipart/form-data";
+    form.target = "_self";
+    form.hidden = true;
+    const fields = {
+      name: state.answers["consent-name"] || "Blerta",
+      _subject: "Fragebogen für Blerta — neue Antworten",
+      _template: "table",
+      message: getSubmissionMessage(),
+    };
+    for (const [name, value] of Object.entries(fields)) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    }
+    for (const file of files) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.name = "attachment";
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+      form.append(input);
+    }
+    document.body.append(form);
+    form.submit();
+    window.setTimeout(() => form.remove(), 1000);
+    saveStatus.textContent = "E-Mail wird übermittelt";
+    status.textContent = "Dein Fragebogen wird abgesendet. FormSubmit zeigt anschließend eine Bestätigungsseite. Deine lokale Antwortkopie bleibt gespeichert.";
   } catch (error) {
-    status.textContent = "Der Versand hat nicht geklappt. Deine Antworten sind weiterhin in diesem Browser gespeichert. Bitte versuche es später erneut oder lade sie herunter.";
+    status.textContent = `${error.message} Deine Antworten bleiben gespeichert.`;
     status.classList.add("is-error");
-    console.error("Fragebogen konnte nicht per E-Mail übermittelt werden.", error);
+    if (error.message.includes("10 MB")) {
+      console.warn("Bilddateien überschreiten die erlaubte E-Mail-Gesamtgröße.", error);
+    } else {
+      console.error("Fragebogen-Dateien konnten nicht für den E-Mail-Versand vorbereitet werden.", error);
+    }
   } finally {
     button.disabled = false;
   }
@@ -461,6 +533,24 @@ nav.addEventListener("click", (event) => {
 content.addEventListener("input", (event) => updateAnswer(event.target));
 content.addEventListener("change", (event) => {
   if (event.target.matches('input[type="radio"], input[type="checkbox"]')) updateAnswer(event.target);
+  if (event.target.matches("[data-artwork-files]")) {
+    const input = event.target;
+    const artworkKey = input.dataset.artworkFiles;
+    const files = [...input.files];
+    saveArtworkFiles(artworkKey, files).then(() => {
+      state.answers[`${artworkKey}-uploads`] = files.map((file) => file.name);
+      saveState();
+      document.querySelector(`#${CSS.escape(artworkKey)}-upload-names`).textContent = files.length
+        ? files.map((file) => file.name).join(", ")
+        : "Noch keine Bilder ausgewählt.";
+    }).catch((error) => {
+      input.value = "";
+      const names = document.querySelector(`#${CSS.escape(artworkKey)}-upload-names`);
+      names.textContent = "Die Bilder konnten nicht gespeichert werden. Bitte versuche es erneut.";
+      names.classList.add("is-error");
+      console.error("Ausgewählte Werkfotos konnten nicht lokal gespeichert werden.", error);
+    });
+  }
 });
 content.addEventListener("click", (event) => {
   const submitButton = event.target.closest("#submit-answers");
@@ -468,11 +558,24 @@ content.addEventListener("click", (event) => {
     submitAnswers(submitButton);
     return;
   }
-  if (!event.target.closest("#add-artwork")) return;
-  if (state.extraArtworks >= 12) {
-    showToast("Du kannst bis zu 12 weitere Bilder ergänzen.");
+  const clearUploadsButton = event.target.closest("[data-clear-artwork]");
+  if (clearUploadsButton) {
+    const artworkKey = clearUploadsButton.dataset.clearArtwork;
+    saveArtworkFiles(artworkKey, []).then(() => {
+      delete state.answers[`${artworkKey}-uploads`];
+      saveState();
+      const input = document.querySelector(`[data-artwork-files="${CSS.escape(artworkKey)}"]`);
+      input.value = "";
+      const names = document.querySelector(`#${CSS.escape(artworkKey)}-upload-names`);
+      names.textContent = "Noch keine Bilder ausgewählt.";
+      names.classList.remove("is-error");
+    }).catch((error) => {
+      console.error("Werkfotos konnten nicht aus dem lokalen Speicher entfernt werden.", error);
+      showToast("Die gespeicherten Fotos konnten nicht entfernt werden.");
+    });
     return;
   }
+  if (!event.target.closest("#add-artwork")) return;
   state.extraArtworks += 1;
   saveState();
   renderSection();

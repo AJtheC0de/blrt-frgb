@@ -1,6 +1,6 @@
 # Fragebogen für Blerta
 
-Ein interaktiver, statischer Fragebogen. Antworten werden automatisch im lokalen Speicher des Browsers gesichert. Blerta kann sie als JSON-Datei herunterladen oder am Ende ausdrücklich per E-Mail über FormSubmit an `ajnunidriton@gmail.com` senden.
+Ein interaktiver, statischer Fragebogen. Antworten werden automatisch im lokalen Speicher des Browsers gesichert; Werkfotos bleiben in IndexedDB auf demselben Gerät. Blerta kann Antworten als JSON-Datei herunterladen oder den Fragebogen samt ausgewählten Werkfotos per FormSubmit an `ajnunidriton@gmail.com` senden.
 
 ## Lokal ansehen
 
@@ -17,6 +17,6 @@ Vercel stellt anschließend eine URL bereit und kann weitere Deployments automat
 
 ## E-Mail-Versand
 
-Der Versand verwendet [FormSubmit](https://formsubmit.co/), damit kein eigener Server oder API-Schlüssel erforderlich ist. FormSubmit verarbeitet die Antworten zur Übermittlung; dazu können freiwillige Angaben zur Gesundheit gehören. Die Antworten bleiben bis zum ausdrücklichen Absenden im Browser. Beim Löschen der Browserdaten können nicht exportierte Antworten verloren gehen.
+Der Versand verwendet [FormSubmit](https://formsubmit.co/), damit kein eigener Server oder API-Schlüssel erforderlich ist. Die Antworten bleiben bis zum ausdrücklichen Absenden im Browser. Beim Löschen der Browserdaten können Antworten und gespeicherte Bilder verloren gehen. Die Fotoauswahl wird nicht in den JSON-Export eingebettet.
 
-Beim ersten Versand schickt FormSubmit eine Aktivierungsnachricht an `ajnunidriton@gmail.com`. Der Empfänger muss die Adresse über diesen Link bestätigen. Danach gehen weitere Einsendungen an diese Adresse. Da der aktuelle Endpunkt im öffentlichen JavaScript steht, sollte nach der Aktivierung ein zufälliger, nicht die E-Mail-Adresse enthaltender FormSubmit-Endpunkt eingerichtet und die Konstante `SUBMISSION_ENDPOINT` in `app.js` entsprechend ersetzt werden.
+Beim ersten Versand schickt FormSubmit eine Aktivierungsnachricht an `ajnunidriton@gmail.com`. Der Empfänger muss die Adresse über diesen Link bestätigen. Danach gehen weitere Einsendungen an diese Adresse. Werkfotos werden als E-Mail-Anhänge übertragen. FormSubmit begrenzt die Gesamtgröße der Anhänge auf 10 MB pro Einsendung; größere Bildmengen müssen auf mehrere Einsendungen verteilt werden. Da der aktuelle Endpunkt im öffentlichen JavaScript steht, sollte nach der Aktivierung ein zufälliger, nicht die E-Mail-Adresse enthaltender FormSubmit-Endpunkt eingerichtet und `SUBMISSION_ENDPOINT` in `app.js` entsprechend ersetzt werden.

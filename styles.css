@@ -219,6 +219,14 @@ textarea.control.short-answer { min-height: 65px; }
 .artwork-fields .control { min-height: 39px; font-size: 12px; }
 .artwork-fields textarea.control { min-height: 72px; }
 .artwork-fields .choice { min-height: 32px; padding: 6px 8px; font-size: 11px; }
+.artwork-upload { margin-top: 15px; padding-top: 14px; border-top: 1px dashed #dedbd2; }
+.artwork-upload .question-label { margin-bottom: 7px; }
+.file-control { padding: 7px; background: rgba(255, 254, 250, .75); font-size: 11px; }
+.file-control::file-selector-button { margin-right: 9px; padding: 6px 9px; border: 0; border-radius: 4px; background: var(--green-light); color: var(--green-dark); font: 600 11px var(--sans); cursor: pointer; }
+.upload-names, .upload-note { margin: 7px 0 0; color: #77776d; font-size: 10px; overflow-wrap: anywhere; }
+.clear-uploads { margin-top: 4px; }
+.upload-note { margin-top: 16px; padding: 11px 13px; border-radius: 5px; background: #f0eee7; line-height: 1.55; }
+.upload-names.is-error { color: #8b4035; }
 .copy-review { padding: 20px 0; border-bottom: 1px solid var(--line); }
 .copy-review .copy-location { margin: 0 0 7px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .copy-review blockquote { margin: 0 0 10px; padding: 12px 14px; border-left: 2px solid #c8c1b4; background: #f0eee7; color: #5e5f56; font: 13px/1.65 var(--serif); }
