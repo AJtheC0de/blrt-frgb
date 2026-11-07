@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f4ed">
+    <meta name="description" content="Ein persönlicher, interaktiver Fragebogen für Blertas Website.">
+    <title>Fragebogen für Blerta — deine Website</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#questionnaire">Zum Fragebogen springen</a>
+    <header class="topbar">
+      <a class="wordmark" href="#" aria-label="Fragebogen für Blerta, Startseite">
+        <span class="wordmark-mark" aria-hidden="true">B</span>
+        <span>BLERTA <span class="wordmark-divider">/</span> WEBSITE</span>
+      </a>
+      <div class="topbar-note"><span class="save-indicator" id="save-indicator" aria-hidden="true"></span><span id="save-status">Nur auf diesem Gerät gespeichert</span></div>
+    </header>
+
+    <main id="questionnaire">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">7. November 2026 <span aria-hidden="true">·</span> @Driton</p>
+        <h1 id="page-title">Deine Geschichte.<br><em>Deine Website.</em></h1>
+        <p class="intro-copy">Liebe Blerta, mit deinen Antworten machen wir deine Website persönlicher und genauer. Jede Frage ist freiwillig – lass einfach leer, was du nicht beantworten möchtest.</p>
+        <div class="privacy-note">
+          <span class="privacy-icon" aria-hidden="true">✳</span>
+          <p><strong>Deine Antworten bleiben privat.</strong> Nichts aus diesem Fragebogen erscheint auf deiner Website, bevor du es gesehen und freigegeben hast. Deine Antworten werden nur in diesem Browser gespeichert und nicht an uns oder einen Server übertragen. Das gilt besonders für persönliche Themen wie deine Gesundheit.</p>
+        </div>
+        <div class="howto">
+          <span class="howto-label">So füllst du ihn aus</span>
+          <p>Schreib deine Antworten direkt in die Felder oder setze ein Häkchen. Stichpunkte reichen völlig – wir formulieren daraus gerne Texte und zeigen sie dir zur Freigabe. Du kannst auch Sprachnachrichten schicken, wenn dir das leichter fällt.</p>
+          <p class="duration">9 Teile <span>·</span> etwa 20–30 Minuten <span>·</span> jederzeit pausierbar</p>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Interaktiver Fragebogen">
+        <aside class="sidebar" aria-label="Fragebogen-Übersicht">
+          <div class="progress-card">
+            <div class="progress-heading"><span>Dein Fortschritt</span><strong id="progress-value">0%</strong></div>
+            <div class="progress-track" role="progressbar" aria-label="Beantwortete Fragen" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar"><span id="progress-fill"></span></div>
+            <p id="progress-caption">Noch keine Antworten – du kannst jederzeit pausieren.</p>
+          </div>
+          <nav class="section-nav" id="section-nav" aria-label="Teile des Fragebogens"></nav>
+          <div class="sidebar-actions">
+            <button type="button" class="text-button" id="export-button">Antworten herunterladen <span aria-hidden="true">↓</span></button>
+            <button type="button" class="text-button muted-button" id="print-button">Drucken</button>
+          </div>
+        </aside>
+
+        <div class="form-area">
+          <div class="storage-warning" id="storage-warning" role="alert" hidden></div>
+          <div id="section-content" aria-live="polite"></div>
+          <div class="form-footer">
+            <button type="button" class="button button-quiet" id="back-button"><span aria-hidden="true">←</span> Zurück</button>
+            <span class="footer-hint">Deine Antworten werden automatisch gespeichert.</span>
+            <button type="button" class="button button-primary" id="next-button">Weiter <span aria-hidden="true">→</span></button>
+          </div>
+          <p class="closing-note" id="closing-note" hidden>Danke dir, Blerta – wir freuen uns sehr darauf, deine Website mit dir fertigzustellen.</p>
+        </div>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
